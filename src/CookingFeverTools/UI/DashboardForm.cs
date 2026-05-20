@@ -18,6 +18,16 @@ internal sealed class DashboardForm : Form
         Width = 80
     };
     private readonly CheckBox _dryRun = new() { Text = "Dry Run", AutoSize = true };
+    private readonly System.Windows.Forms.Timer _mouseTimer = new() { Interval = 250 };
+    private readonly Button _mouseTracker = new() { Text = "Track Mouse", Width = 130, Height = 30 };
+    private readonly Label _mousePosition = new()
+    {
+        AutoSize = false,
+        Width = 210,
+        Height = 30,
+        Text = "Mouse: not tracking",
+        TextAlign = ContentAlignment.MiddleLeft
+    };
     private readonly TextBox _log = new()
     {
         Dock = DockStyle.Fill,
@@ -57,6 +67,7 @@ internal sealed class DashboardForm : Form
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        _mouseTimer.Stop();
         _bot.Dispose();
         base.OnFormClosing(e);
     }
@@ -216,7 +227,8 @@ internal sealed class DashboardForm : Form
         layout.Controls.Add(CreateButton("Todo Utility", () => OpenToolWindow(new TodoForm()), 120));
         layout.Controls.Add(CreateButton("Select Region", () => OpenRegionTool(false), 120));
         layout.Controls.Add(CreateButton("Snapshot Region", () => OpenRegionTool(true), 140));
-        layout.Controls.Add(CreateButton("Mouse Tracker", LaunchMouseTracker, 130));
+        layout.Controls.Add(_mouseTracker);
+        layout.Controls.Add(_mousePosition);
         return group;
     }
 
@@ -256,6 +268,8 @@ internal sealed class DashboardForm : Form
         _profileCombo.SelectedIndexChanged += (_, _) => UpdateProfileSummary();
         _start.Click += (_, _) => RunSafely(StartBot);
         _stop.Click += (_, _) => RunSafely(StopBot);
+        _mouseTracker.Click += (_, _) => RunSafely(ToggleMouseTracker);
+        _mouseTimer.Tick += (_, _) => UpdateMousePosition();
         _bot.LogReceived += AppendLog;
         _bot.StateChanged += state =>
         {
@@ -407,20 +421,27 @@ internal sealed class DashboardForm : Form
         _status.Text = "Stopping";
     }
 
-    private void LaunchMouseTracker()
+    private void ToggleMouseTracker()
     {
-        LaunchDetached("tracker");
+        if (_mouseTimer.Enabled)
+        {
+            _mouseTimer.Stop();
+            _mouseTracker.Text = "Track Mouse";
+            _mousePosition.Text = "Mouse: not tracking";
+            _status.Text = "Mouse tracking stopped";
+            return;
+        }
+
+        UpdateMousePosition();
+        _mouseTimer.Start();
+        _mouseTracker.Text = "Stop Tracking";
+        _status.Text = "Mouse tracking in dashboard";
     }
 
-    private void LaunchDetached(string arguments)
+    private void UpdateMousePosition()
     {
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = Environment.ProcessPath ?? Application.ExecutablePath,
-            Arguments = arguments,
-            WorkingDirectory = AppPaths.AppDirectory,
-            UseShellExecute = true
-        });
+        var point = ScreenAutomation.GetCursorPosition();
+        _mousePosition.Text = $"Mouse: X={point.X}, Y={point.Y}";
     }
 
     private void OpenRegionTool(bool captureScreenshots)

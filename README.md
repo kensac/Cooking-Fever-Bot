@@ -2,7 +2,7 @@
 
 Windows desktop tools for automating and calibrating Cooking Fever workflows.
 
-The app is now GUI-first. Double-click the executable to open the dashboard, manage profiles, calibrate positions, capture template images, run the bot, and review logs.
+The app is now GUI-first. Double-click the executable to open the dashboard, manage profiles, calibrate positions, capture template images, run the bot, and review logs. The main app runs as a Windows GUI app, so it should not open a separate console window.
 
 ## Main Features
 
@@ -11,6 +11,7 @@ The app is now GUI-first. Double-click the executable to open the dashboard, man
 - Calibration wizard for click positions, customer order regions, and cook/refill timings.
 - Asset manager for capturing, previewing, and testing template images.
 - Dry-run mode that logs bot clicks and drags without moving the mouse.
+- In-dashboard mouse tracking.
 - Action monitor, region selector, screenshot tool, mouse tracker, and todo utility.
 - Self-contained Windows publish output.
 
@@ -75,6 +76,7 @@ dotnet run --project .\src\CookingFeverTools -- todo
 ```powershell
 dotnet publish .\src\CookingFeverTools\CookingFeverTools.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o .\dist\CookingFeverTools
 Copy-Item .\dist\CookingFeverTools\cooking-fever-tools.exe .\CookingFeverTools.exe -Force
+Remove-Item .\dist -Recurse -Force
 ```
 
 `CookingFeverTools.exe` is generated locally and ignored by git. Source changes are kept in the repository; release binaries should be attached to GitHub releases instead of committed.
