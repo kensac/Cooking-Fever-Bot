@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.cache
+screenshots/
+assets/*.png
+assets/*.jpg
+assets/*.jpeg
+assets/*.bmp
+!assets/.gitkeep
