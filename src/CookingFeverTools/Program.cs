@@ -20,14 +20,16 @@ internal static class ToolHost
 {
     public static int Run(string[] args)
     {
-        var command = args.Length == 0 ? "launcher" : args[0].Trim().ToLowerInvariant();
+        var command = args.Length == 0 ? "dashboard" : args[0].Trim().ToLowerInvariant();
 
         try
         {
             switch (command)
             {
+                case "dashboard":
                 case "launcher":
-                    RunForm(new LauncherForm());
+                case "app":
+                    RunForm(() => new DashboardForm());
                     return 0;
                 case "bot":
                     new CookingFeverBot(BotOptions.FromArgs(args.Skip(1))).Run();
@@ -36,16 +38,16 @@ internal static class ToolHost
                     MouseTracker.Run(args.Skip(1).ToArray());
                     return 0;
                 case "region":
-                    RunForm(new RegionCaptureForm(captureScreenshots: false));
+                    RunForm(() => new RegionCaptureForm(captureScreenshots: false));
                     return 0;
                 case "snap":
-                    RunForm(new RegionCaptureForm(captureScreenshots: true));
+                    RunForm(() => new RegionCaptureForm(captureScreenshots: true));
                     return 0;
                 case "monitor":
-                    RunForm(new ActionMonitorForm());
+                    RunForm(() => new ActionMonitorForm());
                     return 0;
                 case "todo":
-                    RunForm(new TodoForm());
+                    RunForm(() => new TodoForm());
                     return 0;
                 case "help":
                 case "--help":
@@ -65,10 +67,11 @@ internal static class ToolHost
         }
     }
 
-    private static void RunForm(Form form)
+    private static void RunForm(Func<Form> formFactory)
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        using var form = formFactory();
         Application.Run(form);
     }
 
@@ -78,7 +81,7 @@ internal static class ToolHost
         Cooking Fever Tools
 
         Commands:
-          launcher  Open the graphical launcher. Default when no command is supplied.
+          dashboard Open the graphical dashboard. Default when no command is supplied.
           bot       Run the Cooking Fever automation bot.
           tracker   Print the current mouse position once per second.
           region    Drag-select screen regions and print their coordinates.
@@ -93,166 +96,12 @@ internal static class ToolHost
 
         Bot options:
           --assets <path>       Template image directory. Default: ./assets
+          --profile <path>      Restaurant profile JSON file.
           --confidence <0-1>    Template matching confidence. Default: 0.8
           --delay <seconds>     Initial delay before listening for start. Default: 5
+          --start               Start immediately without waiting for the s hotkey.
+          --dry-run             Log clicks and drags without moving the mouse.
         """);
-    }
-}
-
-internal sealed class LauncherForm : Form
-{
-    private readonly Label _status = new()
-    {
-        AutoSize = false,
-        Dock = DockStyle.Fill,
-        TextAlign = ContentAlignment.MiddleLeft
-    };
-
-    public LauncherForm()
-    {
-        Text = "Cooking Fever Tools";
-        StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(620, 460);
-        Size = new Size(700, 520);
-        Font = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
-
-        var root = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(16),
-            RowCount = 4,
-            ColumnCount = 1
-        };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        Controls.Add(root);
-
-        root.Controls.Add(new Label
-        {
-            Text = "Cooking Fever Tools",
-            Dock = DockStyle.Fill,
-            Font = new Font(Font.FontFamily, 18, FontStyle.Bold),
-            TextAlign = ContentAlignment.MiddleLeft
-        }, 0, 0);
-
-        var tools = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            RowCount = 3,
-            ColumnCount = 2
-        };
-        tools.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        tools.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        tools.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33f));
-        tools.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33f));
-        tools.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33f));
-        root.Controls.Add(tools, 0, 1);
-
-        tools.Controls.Add(CreateToolButton("Run Bot", "Starts the automation bot in its own console window.", () => LaunchConsoleTool("bot")), 0, 0);
-        tools.Controls.Add(CreateToolButton("Mouse Tracker", "Prints the current mouse position once per second.", () => LaunchConsoleTool("tracker")), 1, 0);
-        tools.Controls.Add(CreateToolButton("Select Region", "Drag-select a screen area and print its coordinates.", () => OpenRegionTool(captureScreenshots: false)), 0, 1);
-        tools.Controls.Add(CreateToolButton("Snapshot Region", "Drag-select a screen area and save a PNG screenshot.", () => OpenRegionTool(captureScreenshots: true)), 1, 1);
-        tools.Controls.Add(CreateToolButton("Action Monitor", "Records clicks, keys, screenshots, and tags.", () => OpenToolWindow(new ActionMonitorForm())), 0, 2);
-        tools.Controls.Add(CreateToolButton("Todo Utility", "Tracks objectives, tasks, priorities, and time remaining.", () => OpenToolWindow(new TodoForm())), 1, 2);
-
-        var folders = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false
-        };
-        folders.Controls.Add(CreateFolderButton("Open Assets Folder", AppPaths.AssetsDirectory));
-        folders.Controls.Add(CreateFolderButton("Open Screenshots Folder", AppPaths.ScreenshotsDirectory));
-        root.Controls.Add(folders, 0, 2);
-
-        _status.Text = $"Assets: {AppPaths.AssetsDirectory}";
-        root.Controls.Add(_status, 0, 3);
-    }
-
-    private Button CreateToolButton(string title, string description, Action action)
-    {
-        var button = new Button
-        {
-            Dock = DockStyle.Fill,
-            Margin = new Padding(6),
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(12),
-            Text = $"{title}{Environment.NewLine}{description}",
-            UseVisualStyleBackColor = true
-        };
-        button.Click += (_, _) => RunSafely(action);
-        return button;
-    }
-
-    private Button CreateFolderButton(string title, string directory)
-    {
-        var button = new Button
-        {
-            AutoSize = true,
-            Height = 32,
-            Margin = new Padding(6),
-            Text = title,
-            UseVisualStyleBackColor = true
-        };
-        button.Click += (_, _) => RunSafely(() =>
-        {
-            Directory.CreateDirectory(directory);
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = directory,
-                UseShellExecute = true
-            });
-            _status.Text = $"Opened: {directory}";
-        });
-        return button;
-    }
-
-    private void LaunchConsoleTool(string command)
-    {
-        var executable = Environment.ProcessPath ?? Application.ExecutablePath;
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = executable,
-            Arguments = command,
-            WorkingDirectory = AppPaths.AppDirectory,
-            UseShellExecute = true
-        });
-        _status.Text = $"Started '{command}' in a separate window.";
-    }
-
-    private void OpenRegionTool(bool captureScreenshots)
-    {
-        Hide();
-        var form = new RegionCaptureForm(captureScreenshots);
-        form.FormClosed += (_, _) =>
-        {
-            Show();
-            Activate();
-        };
-        form.Show();
-        _status.Text = captureScreenshots ? "Snapshot region tool opened." : "Region selection tool opened.";
-    }
-
-    private void OpenToolWindow(Form form)
-    {
-        form.StartPosition = FormStartPosition.CenterScreen;
-        form.Show();
-        _status.Text = $"Opened: {form.Text}";
-    }
-
-    private void RunSafely(Action action)
-    {
-        try
-        {
-            action();
-        }
-        catch (Exception ex)
-        {
-            _status.Text = ex.Message;
-            MessageBox.Show(this, ex.Message, "Cooking Fever Tools", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
     }
 }
 
@@ -272,9 +121,18 @@ internal static class AppPaths
     }
 
     public static string ScreenshotsDirectory => Path.Combine(AppDirectory, "screenshots");
+    public static string ProfilesDirectory => Path.Combine(AppDirectory, "profiles");
+    public static string LogsDirectory => Path.Combine(AppDirectory, "logs");
 }
 
-internal sealed record BotOptions(string AssetsDirectory, double Confidence, int InitialDelaySeconds)
+internal sealed record BotOptions(
+    string AssetsDirectory,
+    double Confidence,
+    int InitialDelaySeconds,
+    string? ProfilePath,
+    RestaurantProfile Profile,
+    bool StartImmediately,
+    bool DryRun)
 {
     public static BotOptions FromArgs(IEnumerable<string> args)
     {
@@ -282,6 +140,9 @@ internal sealed record BotOptions(string AssetsDirectory, double Confidence, int
         var assets = AppPaths.AssetsDirectory;
         var confidence = 0.8;
         var delay = 5;
+        string? profilePath = null;
+        var startImmediately = false;
+        var dryRun = false;
 
         for (var i = 0; i < argList.Length; i++)
         {
@@ -290,26 +151,45 @@ internal sealed record BotOptions(string AssetsDirectory, double Confidence, int
                 case "--assets" when i + 1 < argList.Length:
                     assets = Path.GetFullPath(argList[++i]);
                     break;
+                case "--profile" when i + 1 < argList.Length:
+                    profilePath = Path.GetFullPath(argList[++i]);
+                    break;
                 case "--confidence" when i + 1 < argList.Length && double.TryParse(argList[++i], out var parsedConfidence):
                     confidence = Math.Clamp(parsedConfidence, 0.0, 1.0);
                     break;
                 case "--delay" when i + 1 < argList.Length && int.TryParse(argList[++i], out var parsedDelay):
                     delay = Math.Max(0, parsedDelay);
                     break;
+                case "--start":
+                    startImmediately = true;
+                    break;
+                case "--dry-run":
+                    dryRun = true;
+                    break;
             }
         }
 
-        return new BotOptions(assets, confidence, delay);
+        var profile = ProfileStore.LoadOrDefault(profilePath);
+        if (!string.IsNullOrWhiteSpace(profile.AssetsDirectory))
+        {
+            assets = Path.GetFullPath(profile.AssetsDirectory);
+        }
+
+        return new BotOptions(assets, confidence, delay, profilePath, profile, startImmediately, dryRun);
     }
 }
 
 internal sealed class CookingFeverBot
 {
-    private const double BurgerCookTime = 9.0;
-    private const double SodaRefillTime = 8.0;
-    private const double HotdogCookTime = 10.0;
+    private const double DefaultBurgerCookTime = 9.0;
+    private const double DefaultSodaRefillTime = 8.0;
+    private const double DefaultHotdogCookTime = 10.0;
 
     private readonly BotOptions _options;
+    private readonly RestaurantProfile _profile;
+    private readonly double _burgerCookTime;
+    private readonly double _sodaRefillTime;
+    private readonly double _hotdogCookTime;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly List<BotWorkItem> _tasks = [];
     private readonly Dictionary<int, bool> _regionInProgress = new()
@@ -322,36 +202,23 @@ internal sealed class CookingFeverBot
     private readonly Dictionary<int, int> _regionToPan = [];
     private readonly HashSet<string> _missingTemplateWarnings = [];
 
-    private readonly Point _playButtonStageSelect = new(524, 863);
-    private readonly Point _playButtonInStage = new(973, 942);
-    private readonly Point _meatLocation = new(1340, 928);
-    private readonly Point _fryingPan1 = new(1302, 814);
-    private readonly Point _fryingPan2 = new(1270, 711);
-    private readonly Point _burgerPosition = new(771, 712);
-    private readonly Point _bunLocation = new(772, 846);
-    private readonly Point _sodaMachine1 = new(421, 694);
-    private readonly Point _sodaMachine2 = new(515, 694);
-    private readonly Point _hotdogUncooked = new(1496, 904);
-    private readonly Point _hotdogGrill = new(1446, 782);
-    private readonly Point _hotdogHolding = new(1593, 755);
-    private readonly Point _hotdogBun = new(963, 859);
-    private readonly Point _hotdogPrep = new(948, 721);
+    private readonly Point _playButtonStageSelect;
+    private readonly Point _playButtonInStage;
+    private readonly Point _meatLocation;
+    private readonly Point _fryingPan1;
+    private readonly Point _fryingPan2;
+    private readonly Point _burgerPosition;
+    private readonly Point _bunLocation;
+    private readonly Point _sodaMachine1;
+    private readonly Point _sodaMachine2;
+    private readonly Point _hotdogUncooked;
+    private readonly Point _hotdogGrill;
+    private readonly Point _hotdogHolding;
+    private readonly Point _hotdogBun;
+    private readonly Point _hotdogPrep;
 
-    private readonly Dictionary<int, Point> _customerCoords = new()
-    {
-        [1] = new Point(507, 420),
-        [2] = new Point(860, 420),
-        [3] = new Point(1207, 420),
-        [4] = new Point(1552, 420)
-    };
-
-    private readonly Dictionary<int, Rectangle> _orderRegions = new()
-    {
-        [1] = new Rectangle(288, 140, 154, 262),
-        [2] = new Rectangle(634, 142, 149, 257),
-        [3] = new Rectangle(981, 140, 151, 263),
-        [4] = new Rectangle(1324, 143, 153, 261)
-    };
+    private readonly Dictionary<int, Point> _customerCoords;
+    private readonly Dictionary<int, Rectangle> _orderRegions;
 
     private volatile bool _startRequested;
     private volatile bool _stopRequested;
@@ -376,13 +243,51 @@ internal sealed class CookingFeverBot
     public CookingFeverBot(BotOptions options)
     {
         _options = options;
+        _profile = options.Profile;
+        _burgerCookTime = _profile.GetTiming(ProfileKeys.BurgerCookSeconds, DefaultBurgerCookTime);
+        _sodaRefillTime = _profile.GetTiming(ProfileKeys.SodaRefillSeconds, DefaultSodaRefillTime);
+        _hotdogCookTime = _profile.GetTiming(ProfileKeys.HotdogCookSeconds, DefaultHotdogCookTime);
+
+        _playButtonStageSelect = _profile.GetPoint(ProfileKeys.PlayButtonStageSelect);
+        _playButtonInStage = _profile.GetPoint(ProfileKeys.PlayButtonInStage);
+        _meatLocation = _profile.GetPoint(ProfileKeys.MeatLocation);
+        _fryingPan1 = _profile.GetPoint(ProfileKeys.FryingPan1);
+        _fryingPan2 = _profile.GetPoint(ProfileKeys.FryingPan2);
+        _burgerPosition = _profile.GetPoint(ProfileKeys.BurgerPosition);
+        _bunLocation = _profile.GetPoint(ProfileKeys.BunLocation);
+        _sodaMachine1 = _profile.GetPoint(ProfileKeys.SodaMachine1);
+        _sodaMachine2 = _profile.GetPoint(ProfileKeys.SodaMachine2);
+        _hotdogUncooked = _profile.GetPoint(ProfileKeys.HotdogUncooked);
+        _hotdogGrill = _profile.GetPoint(ProfileKeys.HotdogGrill);
+        _hotdogHolding = _profile.GetPoint(ProfileKeys.HotdogHolding);
+        _hotdogBun = _profile.GetPoint(ProfileKeys.HotdogBun);
+        _hotdogPrep = _profile.GetPoint(ProfileKeys.HotdogPrep);
+
+        _customerCoords = new Dictionary<int, Point>
+        {
+            [1] = _profile.GetPoint(ProfileKeys.Customer1),
+            [2] = _profile.GetPoint(ProfileKeys.Customer2),
+            [3] = _profile.GetPoint(ProfileKeys.Customer3),
+            [4] = _profile.GetPoint(ProfileKeys.Customer4)
+        };
+
+        _orderRegions = new Dictionary<int, Rectangle>
+        {
+            [1] = _profile.GetRegion(ProfileKeys.OrderRegion1),
+            [2] = _profile.GetRegion(ProfileKeys.OrderRegion2),
+            [3] = _profile.GetRegion(ProfileKeys.OrderRegion3),
+            [4] = _profile.GetRegion(ProfileKeys.OrderRegion4)
+        };
     }
 
     public void Run()
     {
         Console.WriteLine("Cooking Fever Bot - C# port");
-        Console.WriteLine("Press 's' to start, 'gg' to stop, 'p' to pause.");
+        Console.WriteLine($"Profile: {_profile.Name}");
         Console.WriteLine($"Template assets: {_options.AssetsDirectory}");
+        Console.WriteLine(_options.DryRun
+            ? "Dry run is enabled. Clicks and drags will only be logged."
+            : "Press 's' to start, 'gg' to stop, 'p' to pause.");
         Console.WriteLine();
 
         if (!Directory.Exists(_options.AssetsDirectory))
@@ -398,6 +303,11 @@ internal sealed class CookingFeverBot
         keyboardThread.Start();
 
         Thread.Sleep(TimeSpan.FromSeconds(_options.InitialDelaySeconds));
+        if (_options.StartImmediately)
+        {
+            _startRequested = true;
+            Console.WriteLine("[CONTROL] Auto-start requested.");
+        }
 
         while (!_startRequested && !_stopRequested)
         {
@@ -509,12 +419,24 @@ internal sealed class CookingFeverBot
     private void MoveAndClick(Point point)
     {
         LockMouseFor(0.6);
+        if (_options.DryRun)
+        {
+            Console.WriteLine($"[DRY RUN] Click ({point.X}, {point.Y})");
+            return;
+        }
+
         ScreenAutomation.Click(point);
     }
 
     private void MoveAndDrag(Point source, Point target)
     {
         LockMouseFor(0.8);
+        if (_options.DryRun)
+        {
+            Console.WriteLine($"[DRY RUN] Drag ({source.X}, {source.Y}) -> ({target.X}, {target.Y})");
+            return;
+        }
+
         ScreenAutomation.Drag(source, target);
     }
 
@@ -574,7 +496,7 @@ internal sealed class CookingFeverBot
         void Cook(BotWorkItem item)
         {
             Console.WriteLine("[WARMER] Cooking dog for warmer.");
-            LockGrillFor(HotdogCookTime);
+            LockGrillFor(_hotdogCookTime);
             MoveAndClick(_hotdogUncooked);
             item.EndTime = 0;
         }
@@ -652,14 +574,14 @@ internal sealed class CookingFeverBot
             if (Pan1Free())
             {
                 _regionToPan[customer] = 1;
-                LockPan1For(BurgerCookTime);
+                LockPan1For(_burgerCookTime);
                 MoveAndDrag(_meatLocation, _fryingPan1);
                 Console.WriteLine($"[BURGER] Region {customer} using pan 1.");
             }
             else
             {
                 _regionToPan[customer] = 2;
-                LockPan2For(BurgerCookTime);
+                LockPan2For(_burgerCookTime);
                 MoveAndDrag(_meatLocation, _fryingPan2);
                 Console.WriteLine($"[BURGER] Region {customer} using pan 2.");
             }
@@ -744,13 +666,13 @@ internal sealed class CookingFeverBot
         {
             if (Soda1Free())
             {
-                LockSoda1For(SodaRefillTime);
+                LockSoda1For(_sodaRefillTime);
                 MoveAndDrag(_sodaMachine1, _customerCoords[customer]);
                 Console.WriteLine($"[SODA] Region {customer} using soda 1.");
             }
             else
             {
-                LockSoda2For(SodaRefillTime);
+                LockSoda2For(_sodaRefillTime);
                 MoveAndDrag(_sodaMachine2, _customerCoords[customer]);
                 Console.WriteLine($"[SODA] Region {customer} using soda 2.");
             }
@@ -793,7 +715,7 @@ internal sealed class CookingFeverBot
             void Cook(BotWorkItem item)
             {
                 Console.WriteLine($"[HOTDOG] Region {customer} cooking on demand.");
-                LockGrillFor(HotdogCookTime);
+                LockGrillFor(_hotdogCookTime);
                 MoveAndClick(_hotdogUncooked);
                 item.EndTime = 0;
             }

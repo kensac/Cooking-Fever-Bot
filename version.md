@@ -1,6 +1,6 @@
 # Version
 
-Current version: 0.2.0
+Current version: 1.0.0
 
 Date: 2026-05-20
 
@@ -10,3 +10,4 @@ Notes:
 - Added command-based tools for the bot, mouse tracking, region selection, screenshots, action monitoring, and the todo utility.
 - Initialized this project as its own Git repository under `personal-tools/cooking-fever-tools`.
 - Added a double-click launcher and publish settings for a self-contained Windows executable.
+- Reworked the app into a GUI dashboard with profiles, calibration, asset management, dry-run bot execution, and persistent logs.

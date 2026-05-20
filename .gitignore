@@ -1,12 +1,15 @@
 bin/
 obj/
-dist/
+/dist/
+/CookingFeverTools.exe
 .vs/
 .vscode/
 *.user
 *.suo
 *.cache
-screenshots/
+/screenshots/
+/profiles/
+/logs/
 assets/*.png
 assets/*.jpg
 assets/*.jpeg
