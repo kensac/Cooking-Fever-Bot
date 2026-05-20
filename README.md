@@ -11,9 +11,16 @@ The app is a .NET Windows command-line tool with a few WinForms utilities:
 - `monitor` opens an action monitor and screenshot tagger.
 - `todo` opens the objective/task todo utility from the original project.
 
-## Run
+## Run from the executable
+
+Double-click `cooking-fever-tools.exe` to open the launcher. The launcher can start the bot, tracker, region selector, screenshot tool, action monitor, and todo utility.
+
+The bot and mouse tracker open in their own console windows because they print live status. The other utilities open as normal windows.
+
+## Run during development
 
 ```powershell
+dotnet run --project .\src\CookingFeverTools
 dotnet run --project .\src\CookingFeverTools -- help
 dotnet run --project .\src\CookingFeverTools -- bot
 dotnet run --project .\src\CookingFeverTools -- tracker
@@ -23,9 +30,17 @@ dotnet run --project .\src\CookingFeverTools -- monitor
 dotnet run --project .\src\CookingFeverTools -- todo
 ```
 
+## Publish an EXE
+
+```powershell
+dotnet publish .\src\CookingFeverTools\CookingFeverTools.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o .\dist\CookingFeverTools
+```
+
+The published executable is written to `dist\CookingFeverTools\cooking-fever-tools.exe`.
+
 ## Bot Assets
 
-The bot expects template images in `assets/` by default:
+The bot expects template images in the `assets/` folder beside the executable by default:
 
 - `burger.png`
 - `soda.png`

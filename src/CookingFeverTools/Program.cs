@@ -20,12 +20,15 @@ internal static class ToolHost
 {
     public static int Run(string[] args)
     {
-        var command = args.Length == 0 ? "help" : args[0].Trim().ToLowerInvariant();
+        var command = args.Length == 0 ? "launcher" : args[0].Trim().ToLowerInvariant();
 
         try
         {
             switch (command)
             {
+                case "launcher":
+                    RunForm(new LauncherForm());
+                    return 0;
                 case "bot":
                     new CookingFeverBot(BotOptions.FromArgs(args.Skip(1))).Run();
                     return 0;
@@ -75,6 +78,7 @@ internal static class ToolHost
         Cooking Fever Tools
 
         Commands:
+          launcher  Open the graphical launcher. Default when no command is supplied.
           bot       Run the Cooking Fever automation bot.
           tracker   Print the current mouse position once per second.
           region    Drag-select screen regions and print their coordinates.
@@ -95,12 +99,187 @@ internal static class ToolHost
     }
 }
 
+internal sealed class LauncherForm : Form
+{
+    private readonly Label _status = new()
+    {
+        AutoSize = false,
+        Dock = DockStyle.Fill,
+        TextAlign = ContentAlignment.MiddleLeft
+    };
+
+    public LauncherForm()
+    {
+        Text = "Cooking Fever Tools";
+        StartPosition = FormStartPosition.CenterScreen;
+        MinimumSize = new Size(620, 460);
+        Size = new Size(700, 520);
+        Font = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
+
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(16),
+            RowCount = 4,
+            ColumnCount = 1
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        Controls.Add(root);
+
+        root.Controls.Add(new Label
+        {
+            Text = "Cooking Fever Tools",
+            Dock = DockStyle.Fill,
+            Font = new Font(Font.FontFamily, 18, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft
+        }, 0, 0);
+
+        var tools = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            RowCount = 3,
+            ColumnCount = 2
+        };
+        tools.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        tools.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        tools.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33f));
+        tools.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33f));
+        tools.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33f));
+        root.Controls.Add(tools, 0, 1);
+
+        tools.Controls.Add(CreateToolButton("Run Bot", "Starts the automation bot in its own console window.", () => LaunchConsoleTool("bot")), 0, 0);
+        tools.Controls.Add(CreateToolButton("Mouse Tracker", "Prints the current mouse position once per second.", () => LaunchConsoleTool("tracker")), 1, 0);
+        tools.Controls.Add(CreateToolButton("Select Region", "Drag-select a screen area and print its coordinates.", () => OpenRegionTool(captureScreenshots: false)), 0, 1);
+        tools.Controls.Add(CreateToolButton("Snapshot Region", "Drag-select a screen area and save a PNG screenshot.", () => OpenRegionTool(captureScreenshots: true)), 1, 1);
+        tools.Controls.Add(CreateToolButton("Action Monitor", "Records clicks, keys, screenshots, and tags.", () => OpenToolWindow(new ActionMonitorForm())), 0, 2);
+        tools.Controls.Add(CreateToolButton("Todo Utility", "Tracks objectives, tasks, priorities, and time remaining.", () => OpenToolWindow(new TodoForm())), 1, 2);
+
+        var folders = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false
+        };
+        folders.Controls.Add(CreateFolderButton("Open Assets Folder", AppPaths.AssetsDirectory));
+        folders.Controls.Add(CreateFolderButton("Open Screenshots Folder", AppPaths.ScreenshotsDirectory));
+        root.Controls.Add(folders, 0, 2);
+
+        _status.Text = $"Assets: {AppPaths.AssetsDirectory}";
+        root.Controls.Add(_status, 0, 3);
+    }
+
+    private Button CreateToolButton(string title, string description, Action action)
+    {
+        var button = new Button
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(6),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(12),
+            Text = $"{title}{Environment.NewLine}{description}",
+            UseVisualStyleBackColor = true
+        };
+        button.Click += (_, _) => RunSafely(action);
+        return button;
+    }
+
+    private Button CreateFolderButton(string title, string directory)
+    {
+        var button = new Button
+        {
+            AutoSize = true,
+            Height = 32,
+            Margin = new Padding(6),
+            Text = title,
+            UseVisualStyleBackColor = true
+        };
+        button.Click += (_, _) => RunSafely(() =>
+        {
+            Directory.CreateDirectory(directory);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = directory,
+                UseShellExecute = true
+            });
+            _status.Text = $"Opened: {directory}";
+        });
+        return button;
+    }
+
+    private void LaunchConsoleTool(string command)
+    {
+        var executable = Environment.ProcessPath ?? Application.ExecutablePath;
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = executable,
+            Arguments = command,
+            WorkingDirectory = AppPaths.AppDirectory,
+            UseShellExecute = true
+        });
+        _status.Text = $"Started '{command}' in a separate window.";
+    }
+
+    private void OpenRegionTool(bool captureScreenshots)
+    {
+        Hide();
+        var form = new RegionCaptureForm(captureScreenshots);
+        form.FormClosed += (_, _) =>
+        {
+            Show();
+            Activate();
+        };
+        form.Show();
+        _status.Text = captureScreenshots ? "Snapshot region tool opened." : "Region selection tool opened.";
+    }
+
+    private void OpenToolWindow(Form form)
+    {
+        form.StartPosition = FormStartPosition.CenterScreen;
+        form.Show();
+        _status.Text = $"Opened: {form.Text}";
+    }
+
+    private void RunSafely(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            _status.Text = ex.Message;
+            MessageBox.Show(this, ex.Message, "Cooking Fever Tools", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+}
+
+internal static class AppPaths
+{
+    public static string AppDirectory => Path.GetFullPath(AppContext.BaseDirectory);
+
+    public static string AssetsDirectory
+    {
+        get
+        {
+            var currentDirectoryAssets = Path.Combine(Environment.CurrentDirectory, "assets");
+            return Directory.Exists(currentDirectoryAssets)
+                ? currentDirectoryAssets
+                : Path.Combine(AppDirectory, "assets");
+        }
+    }
+
+    public static string ScreenshotsDirectory => Path.Combine(AppDirectory, "screenshots");
+}
+
 internal sealed record BotOptions(string AssetsDirectory, double Confidence, int InitialDelaySeconds)
 {
     public static BotOptions FromArgs(IEnumerable<string> args)
     {
         var argList = args.ToArray();
-        var assets = Path.Combine(Environment.CurrentDirectory, "assets");
+        var assets = AppPaths.AssetsDirectory;
         var confidence = 0.8;
         var delay = 5;
 
@@ -987,7 +1166,7 @@ internal sealed class RegionCaptureForm : Form
     public RegionCaptureForm(bool captureScreenshots)
     {
         _captureScreenshots = captureScreenshots;
-        _outputDirectory = Path.Combine(Environment.CurrentDirectory, "screenshots");
+        _outputDirectory = AppPaths.ScreenshotsDirectory;
         Text = captureScreenshots ? "Snapshot Region Tool" : "Region Selection Tool";
         FormBorderStyle = FormBorderStyle.None;
         Bounds = SystemInformation.VirtualScreen;
@@ -1115,7 +1294,7 @@ internal sealed class ActionMonitorForm : Form
     private readonly Button _stopButton = new() { Text = "Stop Monitoring", Enabled = false };
     private readonly Button _saveTagButton = new() { Text = "Save Tag" };
     private readonly Timer _fullscreenTimer = new() { Interval = 5000 };
-    private readonly string _screenshotDirectory = Path.Combine(Environment.CurrentDirectory, "screenshots");
+    private readonly string _screenshotDirectory = AppPaths.ScreenshotsDirectory;
     private NativeMethods.HookProc? _mouseHookProc;
     private NativeMethods.HookProc? _keyboardHookProc;
     private IntPtr _mouseHook;

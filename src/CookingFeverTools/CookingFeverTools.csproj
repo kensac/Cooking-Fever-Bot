@@ -8,6 +8,15 @@
     <Nullable>enable</Nullable>
     <AssemblyName>cooking-fever-tools</AssemblyName>
     <RootNamespace>CookingFeverTools</RootNamespace>
+    <Version>0.2.0</Version>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\assets\**\*">
+      <Link>assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>
