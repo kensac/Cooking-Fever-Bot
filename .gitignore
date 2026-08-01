@@ -7,9 +7,23 @@ obj/
 *.user
 *.suo
 *.cache
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+.mypy_cache/
+.ruff_cache/
+.python-version
 /screenshots/
 /profiles/
 /logs/
+/settings.json
+.DS_Store
 assets/*.png
 assets/*.jpg
 assets/*.jpeg

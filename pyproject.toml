@@ -1,0 +1,23 @@
+[project]
+name = "cooking-fever-bot"
+version = "2.2.0"
+description = "Cross-platform Python tools for automating and calibrating Cooking Fever workflows."
+requires-python = ">=3.10"
+dependencies = [
+    "pyautogui>=0.9.54",
+    "mss>=9.0.1",
+    "opencv-python>=4.9.0",
+    "numpy>=1.26.0",
+    "pynput>=1.7.6",
+    "pillow>=10.0.0",
+]
+
+[project.scripts]
+cooking-fever = "cooking_fever.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["cooking_fever", "cooking_fever.gui"]

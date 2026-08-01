@@ -1,40 +1,47 @@
 # Agent Instructions
 
-This repository is a GUI-first Windows desktop app for Cooking Fever tools.
+This repository is a cross-platform, GUI-first Python app for Cooking Fever tools.
+The main entry point is `main.py`; the code lives in the `cooking_fever/` package.
+Legacy C#/.NET sources remain under `src/` for reference only.
 
 ## Version Management
 
-- Keep `version.md` current whenever functionality, packaging, or user-facing behavior changes.
-- Keep `src/CookingFeverTools/CookingFeverTools.csproj` `<Version>` in sync with `version.md`.
+- Keep `version.md` current whenever functionality or user-facing behavior changes.
+- Keep the `version` in `pyproject.toml` and `cooking_fever/__init__.py` (`__version__`)
+  in sync with `version.md`.
 - Use semantic versions:
   - Patch for fixes and small usability changes.
   - Minor for new features.
   - Major for breaking changes or large workflow changes.
 - Add a short note in `version.md` explaining what changed.
 
-## Executable Output
+## Structure
 
-- When the version is updated, build a fresh self-contained Windows executable and place it in the repository root as `CookingFeverTools.exe`.
-- Use:
+- `main.py` — command dispatch (`dashboard`, `bot`, `tracker`, `region`, `snap`, `monitor`, `todo`).
+- `cooking_fever/automation.py` — mouse/screen input and capture (pyautogui + mss).
+- `cooking_fever/template.py` — OpenCV template matching.
+- `cooking_fever/profiles.py` — restaurant profiles and JSON store.
+- `cooking_fever/bot.py` — the order-scheduling automation bot.
+- `cooking_fever/gui/` — tkinter dashboard and tool windows.
 
-```powershell
-dotnet publish .\src\CookingFeverTools\CookingFeverTools.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o .\dist\CookingFeverTools
-Copy-Item .\dist\CookingFeverTools\cooking-fever-tools.exe .\CookingFeverTools.exe -Force
-Remove-Item .\dist -Recurse -Force
-```
+## Generated Output
 
-- `CookingFeverTools.exe`, `dist/`, `profiles/`, `logs/`, and `screenshots/` are local generated output and should stay ignored by git.
-- After copying the root executable, remove `dist/` unless it is needed for troubleshooting.
-- Do not commit generated binaries unless the user explicitly asks for binaries in the repository.
+- `assets/`, `profiles/`, `screenshots/`, and `logs/` are local generated output
+  and stay ignored by git.
+- Do not commit generated files, virtual environments, or `__pycache__/`.
 
 ## Verification
 
 - Before handing off, run:
 
-```powershell
-dotnet build .\src\CookingFeverTools\CookingFeverTools.csproj -c Release
-dotnet format .\src\CookingFeverTools\CookingFeverTools.csproj --verify-no-changes
+```bash
+python3 -m compileall cooking_fever main.py
+python3 main.py help
 ```
 
-- After publishing, verify that `.\CookingFeverTools.exe` exists in the root directory.
-- For GUI changes, smoke test that `.\CookingFeverTools.exe` starts and closes cleanly.
+- Heavy dependencies (pyautogui, mss, opencv-python, pynput) are imported lazily,
+  so `help` and the pure-logic modules import without them installed.
+- The GUI needs a Python built with Tk support; if `_tkinter` is missing, install
+  it (`brew install python-tk`, `apt install python3-tk`, or use a python.org build).
+- For automation or GUI changes, smoke test with `python3 main.py bot --dry-run --start`
+  and by opening the dashboard where a display is available.
